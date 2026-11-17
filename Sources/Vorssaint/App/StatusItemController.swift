@@ -39,6 +39,7 @@ final class StatusItemController {
     private var heldKeepAwakeSignal: Bool?
     /// A settings reply already waiting for the next turn of the run loop.
     private var settingsSyncScheduled = false
+    private var lastAgentUsageActivation: (notch: Bool, menuBar: Bool)?
     /// How many readings in a row each metric has failed to render, so an
     /// item is kept through a hiccup but not forever.
     private var metricEmptyRenders: [String: Int] = [:]
@@ -100,6 +101,7 @@ final class StatusItemController {
     init() {
         installStatusItem()
         bind()
+        scheduleSettingsSync()
     }
 
     /// Creates the status item and configures its button. The menu bar item is the
@@ -197,7 +199,15 @@ final class StatusItemController {
         SystemMonitor.shared.$snapshot
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                guard MenuBarMetric.anyEnabled(in: .standard) else { return }
+                guard MenuBarMetric.anySystemMonitorMetricEnabled(in: .standard) else { return }
+                self?.refresh()
+            }
+            .store(in: &cancellables)
+
+        AgentUsageService.shared.$snapshot
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard MenuBarMetric.enabled(in: .standard).contains(.aiUsage) else { return }
                 self?.refresh()
             }
             .store(in: &cancellables)
@@ -233,6 +243,16 @@ final class StatusItemController {
             guard let self else { return }
             self.settingsSyncScheduled = false
             self.syncMonitorMode()
+            let notchAgents = NotchAgentSupport.isEnabled()
+            let menuBarAgents = MenuBarMetric.enabled(in: .standard).contains(.aiUsage)
+            if lastAgentUsageActivation?.notch != notchAgents || lastAgentUsageActivation?.menuBar != menuBarAgents {
+                lastAgentUsageActivation = (notchAgents, menuBarAgents)
+                if notchAgents || menuBarAgents {
+                    AgentUsageService.shared.syncWithPreferences()
+                } else if lastAgentUsageActivation != nil {
+                    AgentUsageService.shared.stop()
+                }
+            }
             self.updateIconAppearance()
             self.refresh()
             self.bindClipboardPreviewIfAvailable()
@@ -281,7 +301,7 @@ final class StatusItemController {
         let defaults = UserDefaults.standard
         let interval = Defaults.sanitizedMonitorInterval(defaults.integer(forKey: DefaultsKey.monitorInterval))
         SystemMonitor.shared.setInterval(seconds: interval)
-        SystemMonitor.shared.setMenuBarActive(MenuBarMetric.anyEnabled(in: defaults))
+        SystemMonitor.shared.setMenuBarActive(MenuBarMetric.anySystemMonitorMetricEnabled(in: defaults))
     }
 
     private func syncTitleTimer(keepAwakeActive: Bool,
@@ -687,7 +707,7 @@ final class StatusItemController {
                                      primary: .battery,
                                      temperature: .batteryTemperature,
                                      primaryTitle: strings.batteryLabel)
-            case .memory, .network, .diskUsage, .diskActivity, .batteryTime, .peripheralBattery, .power,
+            case .memory, .aiUsage, .network, .diskUsage, .diskActivity, .batteryTime, .peripheralBattery, .power,
                  .fanSpeed, .connectedDevices:
                 let id = metric.rawValue
                 guard emittedIDs.insert(id).inserted else { continue }

@@ -5,7 +5,7 @@ import AppKit
 
 /// A live reading the user can pin next to the menu bar icon.
 enum MenuBarMetric: String, CaseIterable, Identifiable {
-    case cpu, gpu, memory, cpuTemperature, gpuTemperature, batteryTemperature, network, diskUsage, diskActivity, battery, batteryTime, peripheralBattery, power, fanSpeed, connectedDevices
+    case cpu, gpu, memory, aiUsage, cpuTemperature, gpuTemperature, batteryTemperature, network, diskUsage, diskActivity, battery, batteryTime, peripheralBattery, power, fanSpeed, connectedDevices
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .cpu: return DefaultsKey.menuBarCPU
         case .gpu: return DefaultsKey.menuBarGPU
         case .memory: return DefaultsKey.menuBarMemory
+        case .aiUsage: return DefaultsKey.menuBarAIUsage
         case .cpuTemperature: return DefaultsKey.menuBarCPUTemperature
         case .gpuTemperature: return DefaultsKey.menuBarGPUTemperature
         case .batteryTemperature: return DefaultsKey.menuBarBatteryTemperature
@@ -34,6 +35,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .cpu: return "cpu"
         case .gpu: return "rectangle.connected.to.line.below"
         case .memory: return "memorychip"
+        case .aiUsage: return "sparkles"
         case .cpuTemperature: return "cpu"
         case .gpuTemperature: return "rectangle.connected.to.line.below"
         case .batteryTemperature: return "battery.100"
@@ -54,6 +56,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .cpu: return strings.monitorShowCPU
         case .gpu: return strings.monitorShowGPU
         case .memory: return strings.monitorShowMemory
+        case .aiUsage: return "AI"
         case .cpuTemperature: return strings.monitorShowCPUTemperature
         case .gpuTemperature: return strings.monitorShowGPUTemperature
         case .batteryTemperature: return strings.monitorShowBatteryTemperature
@@ -72,7 +75,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
     static let defaultOrder: [MenuBarMetric] = [
         .cpu, .cpuTemperature,
         .gpu, .gpuTemperature,
-        .memory,
+        .memory, .aiUsage,
         .battery, .batteryTime, .batteryTemperature, .peripheralBattery,
         .network, .diskUsage, .diskActivity, .connectedDevices, .power, .fanSpeed,
     ]
@@ -95,6 +98,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .cpu, .cpuTemperature: return .monitorCPU
         case .gpu, .gpuTemperature: return .monitorGPU
         case .memory: return .monitorMemory
+        case .aiUsage: return .notchAgents
         case .network: return .monitorNetwork
         case .diskUsage, .diskActivity: return .monitorDisk
         case .connectedDevices: return .connectedDevices
@@ -117,7 +121,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
     static func enabled(in defaults: UserDefaults) -> [MenuBarMetric] {
         order(in: defaults).filter {
             defaults.bool(forKey: $0.defaultsKey)
-                && defaults.bool(forKey: $0.feature.availabilityKey)
+                && ($0 == .aiUsage || defaults.bool(forKey: $0.feature.availabilityKey))
                 && $0.isAvailableOnCurrentHardware
         }
     }
@@ -128,6 +132,10 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
                 && defaults.bool(forKey: $0.feature.availabilityKey)
                 && $0.isAvailableOnCurrentHardware
         }
+    }
+
+    static func anySystemMonitorMetricEnabled(in defaults: UserDefaults) -> Bool {
+        enabled(in: defaults).contains { $0 != .aiUsage }
     }
 }
 
@@ -470,6 +478,21 @@ enum MenuBarRenderer {
                                                 style: style,
                                                 pressure: memoryStyle.showsDot ? snapshot.memoryPressure : nil)])
                 }
+            case .aiUsage:
+                let usage = AgentUsageService.shared.snapshot
+                let provider = AgentUsageService.menuBarProvider
+                let limits = usage.limits[provider]
+                let window = NotchAgentSupport.focusedLimit(limits,
+                                                            focus: NotchAgentSupport.limitFocus(),
+                                                            now: usage.now)
+                if usesBars, usage.loaded, let window {
+                    groups.append([.usageBarBlock(label: "AI", fraction: window.usedFraction,
+                                                  style: style, pressure: nil)])
+                } else {
+                    let value = usage.loaded ? window.map { "\(Int($0.usedPercent.rounded()))%" } ?? "—" : "—"
+                    groups.append([.metricBlock(label: "AI", value: value,
+                                                minimumValue: "100%", style: style, pressure: nil)])
+                }
             case .network:
                 if let down = snapshot.netDownBytesPerSec, let up = snapshot.netUpBytesPerSec {
                     groups.append([.networkBlock(down: MetricFormat.networkRateCompact(down),
@@ -661,6 +684,8 @@ enum MenuBarRenderer {
             return 11      // symbol + " CPU 100%"
         case (_, .memory):
             return MemoryMenuBarStyle.current.showsDot ? 13 : 11
+        case (_, .aiUsage):
+            return 10      // sparkles + " AI 100%"
         case (_, .cpuTemperature), (_, .gpuTemperature), (_, .batteryTemperature):
             return 11      // symbol + " CPU 999°" / " GPU 999°" / " BAT 999°"
         case (_, .peripheralBattery):

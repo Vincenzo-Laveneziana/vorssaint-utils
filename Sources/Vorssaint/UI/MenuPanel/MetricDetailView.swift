@@ -94,7 +94,7 @@ enum MetricDetailKind: String, Equatable, Identifiable {
 }
 
 extension MenuBarMetric {
-    var detailKind: MetricDetailKind {
+    var detailKind: MetricDetailKind? {
         switch self {
         case .cpu, .cpuTemperature:
             return .cpu
@@ -114,6 +114,8 @@ extension MenuBarMetric {
             return .fan
         case .connectedDevices:
             return .connectedDevices
+        case .aiUsage:
+            return nil
         }
     }
 }

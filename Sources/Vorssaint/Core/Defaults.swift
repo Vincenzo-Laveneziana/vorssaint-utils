@@ -411,6 +411,8 @@ enum DefaultsKey {
     static let menuBarCPU = "menuBarCPU"
     static let menuBarGPU = "menuBarGPU"
     static let menuBarMemory = "menuBarMemory"
+    static let menuBarAIUsage = "menuBarAIUsage"
+    static let menuBarAIProvider = "menuBarAIProvider"
     static let menuBarCPUTemperature = "menuBarCPUTemperature"
     static let menuBarGPUTemperature = "menuBarGPUTemperature"
     static let menuBarBatteryTemperature = "menuBarBatteryTemperature"
@@ -1223,7 +1225,7 @@ enum Defaults {
     static let defaultMenuBarMetricOrder = [
         "cpu", "cpuTemperature",
         "gpu", "gpuTemperature",
-        "memory",
+        "memory", "aiUsage",
         "battery", "batteryTime", "batteryTemperature", "peripheralBattery",
         "network", "diskUsage", "diskActivity", "connectedDevices", "power", "fanSpeed",
     ]
@@ -1695,6 +1697,8 @@ enum Defaults {
         DefaultsKey.monitorInterval: 2,
         DefaultsKey.temperatureUnit: TemperatureUnit.celsius.rawValue,
         DefaultsKey.menuBarCPUTemperature: false,
+        DefaultsKey.menuBarAIUsage: false,
+        DefaultsKey.menuBarAIProvider: AgentProvider.codex.rawValue,
         DefaultsKey.menuBarGPUTemperature: false,
         DefaultsKey.menuBarBatteryTemperature: false,
         DefaultsKey.menuBarBatteryTime: false,

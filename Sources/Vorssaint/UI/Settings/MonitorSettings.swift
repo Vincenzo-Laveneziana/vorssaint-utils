@@ -378,7 +378,7 @@ private struct MenuBarMetricTiles: View {
     /// Metrics whose family left the hub keep their saved slot but stay out
     /// of the editor until they return.
     private var visibleOrder: [MenuBarMetric] {
-        order.filter { $0.feature.isAvailable && $0.isAvailableOnCurrentHardware }
+        order.filter { ($0 == .aiUsage || $0.feature.isAvailable) && $0.isAvailableOnCurrentHardware }
     }
 }
 
@@ -394,6 +394,7 @@ private struct MenuBarMetricTile: View {
     @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
     @AppStorage(DefaultsKey.menuBarNetworkUploadFirst) private var uploadFirst = false
     @AppStorage(DiskMenuBarStyle.defaultsKey) private var diskStyle = DiskMenuBarStyle.percent
+    @AppStorage(DefaultsKey.menuBarAIProvider) private var aiProvider = AgentProvider.codex.rawValue
 
     init(metric: MenuBarMetric) {
         self.metric = metric
@@ -418,6 +419,9 @@ private struct MenuBarMetricTile: View {
             case DiskMenuBarStyle.used: return l10n.s.diskMenuBarUsedSpace
             default: return l10n.s.diskMenuBarUsedPercentage
             }
+        case .aiUsage:
+            let provider = AgentProvider(rawValue: aiProvider) ?? .codex
+            return provider.displayName
         default: return ""
         }
     }
@@ -440,6 +444,13 @@ private struct MenuBarMetricTile: View {
                 Text(l10n.s.diskMenuBarUsedPercentage).tag(DiskMenuBarStyle.percent)
                 Text(l10n.s.diskMenuBarAvailableSpace).tag(DiskMenuBarStyle.free)
                 Text(l10n.s.diskMenuBarUsedSpace).tag(DiskMenuBarStyle.used)
+            }
+            .pickerStyle(.menu))
+        case .aiUsage:
+            return AnyView(Picker(FeatureStrings.notchAgents(l10n.language).title, selection: $aiProvider) {
+                ForEach(AgentProvider.allCases) { provider in
+                    Text(provider.displayName).tag(provider.rawValue)
+                }
             }
             .pickerStyle(.menu))
         default:

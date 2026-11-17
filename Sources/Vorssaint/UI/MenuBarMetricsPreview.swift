@@ -8,9 +8,12 @@ import SwiftUI
 /// visual cost before they occupy the actual menu bar.
 struct MenuBarMetricsPreview: View {
     @ObservedObject private var monitor = SystemMonitor.shared
+    @ObservedObject private var agentUsage = AgentUsageService.shared
     @AppStorage(DefaultsKey.menuBarCPU) private var cpu = false
     @AppStorage(DefaultsKey.menuBarGPU) private var gpu = false
     @AppStorage(DefaultsKey.menuBarMemory) private var memory = false
+    @AppStorage(DefaultsKey.menuBarAIUsage) private var aiUsageEnabled = false
+    @AppStorage(DefaultsKey.menuBarAIProvider) private var aiProvider = AgentProvider.codex.rawValue
     @AppStorage(DefaultsKey.menuBarCPUTemperature) private var cpuTemperature = false
     @AppStorage(DefaultsKey.menuBarGPUTemperature) private var gpuTemperature = false
     @AppStorage(DefaultsKey.menuBarBatteryTemperature) private var batteryTemperature = false
@@ -44,6 +47,9 @@ struct MenuBarMetricsPreview: View {
 
     var body: some View {
         let _ = metricOrder
+        let _ = agentUsage.snapshot
+        let _ = aiUsageEnabled
+        let _ = aiProvider
         let _ = combineTemperatures
         let _ = metricAppearance
         let _ = usageBarNormalColor

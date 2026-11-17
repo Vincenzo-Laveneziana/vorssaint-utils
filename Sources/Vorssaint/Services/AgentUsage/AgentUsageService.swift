@@ -6,7 +6,8 @@ import Foundation
 import Network
 
 /// Reads Claude Code, Codex and GitHub Copilot usage from local session logs, and
-/// OpenCode usage from its database, while the AI section is on, along with
+/// OpenCode usage from its database, while the AI section or its menu bar
+/// metric is on, along with
 /// the plan limits the Claude app saves. The files are read where they are,
 /// incrementally, and nothing is copied or sent: only counters are kept, in
 /// memory and in the app's private folder so the next launch reads only what
@@ -20,6 +21,10 @@ import Network
 /// to be saved. The queue never waits for the main thread.
 final class AgentUsageService: ObservableObject {
     static let shared = AgentUsageService()
+
+    static var menuBarProvider: AgentProvider {
+        AgentProvider(rawValue: UserDefaults.standard.string(forKey: DefaultsKey.menuBarAIProvider) ?? "") ?? .codex
+    }
 
     @Published private(set) var snapshot = AgentUsageSnapshot()
     /// When the Claude app last saved the plan's limits; nil when it never has.
@@ -123,7 +128,8 @@ final class AgentUsageService: ObservableObject {
 
     func syncWithPreferences() {
         CodexProfileLimitsService.shared.synchronize()
-        guard NotchAgentSupport.isEnabled() else { stop(); return }
+        let menuBarWantsUsage = MenuBarMetric.enabled(in: .standard).contains(.aiUsage)
+        guard NotchAgentSupport.isEnabled() || menuBarWantsUsage else { stop(); return }
         let wanted = NotchAgentSupport.providers()
         let profile = ClaudeAccountProfile.selected()
         let showingPage = pageVisible
