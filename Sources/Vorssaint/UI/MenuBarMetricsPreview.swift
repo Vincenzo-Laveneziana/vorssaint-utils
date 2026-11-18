@@ -208,16 +208,17 @@ struct MenuBarMetricsPreview: View {
                    height: style == .readable ? 22 : 20,
                    alignment: .center)
         case let .batteryBlock(percent, isCharging, externalConnected, warning, style):
-            HStack(spacing: style == .readable ? 5 : 4) {
+            VStack(spacing: -1) {
                 Image(systemName: BatteryPowerSupport.menuBarSymbol(percent: percent,
                                                                     isCharging: isCharging,
                                                                     externalConnected: externalConnected))
-                    .font(.system(size: style == .readable ? 17 : 15.5, weight: .regular))
+                    .font(.system(size: style == .readable ? 10.8 : 9.8, weight: .regular))
+                    .frame(height: 10)
                 Text("\(max(0, min(100, percent)))%")
                     .font(.system(size: style == .readable ? 13 : 12,
                                   weight: .semibold,
                                   design: .monospaced))
-                    .frame(minWidth: style == .readable ? 33 : 30, alignment: .leading)
+                    .frame(minWidth: style == .readable ? 33 : 30)
             }
             .foregroundStyle(MenuBarRenderer.nsColor(for: warning).map { Color(nsColor: $0) } ?? .white)
             .fixedSize(horizontal: true, vertical: true)

@@ -11,6 +11,7 @@ import UserNotifications
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSWindowDelegate {
     var configuredFeatureKeys: Set<String> = []
     private var statusController: StatusItemController!
+    private var menuBarHidingController: MenuBarHidingController!
     private let popover = NSPopover()
     private var popoverDismissMonitor: Any?
     private var popoverLocalDismissMonitor: Any?
@@ -120,6 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         PanelLayout.resetCollapsedSectionsOnce(for: "2.15.1")
 
         statusController = StatusItemController()
+        menuBarHidingController = MenuBarHidingController()
         statusController.onLeftClick = { [weak self] in
             self?.captureStatusClick()
             self?.toggleMainPopover()

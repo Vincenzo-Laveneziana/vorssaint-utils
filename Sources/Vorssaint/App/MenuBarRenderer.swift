@@ -891,7 +891,7 @@ enum MenuBarRenderer {
         let attachment = NSTextAttachment()
         attachment.image = image
         attachment.bounds = NSRect(x: 0,
-                                   y: (style == .readable ? -5.7 : -5.5) + legacyBlockAttachmentNudge,
+                                   y: (style == .readable ? -5.9 : -5.7) + legacyBlockAttachmentNudge,
                                    width: image.size.width,
                                    height: image.size.height)
         return NSAttributedString(attachment: attachment)
@@ -1123,17 +1123,16 @@ enum MenuBarRenderer {
                                                            isCharging: isCharging,
                                                            externalConnected: externalConnected)
         let warningColor = nsColor(for: warning)
-        let symbolPointSize: CGFloat = style == .readable ? 17.0 : 15.5
+        let symbolPointSize: CGFloat = style == .readable ? 10.8 : 9.8
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: style == .readable ? 13.0 : 12.0,
                                                          weight: .semibold)
         let value = "\(clampedPercent)%"
         let sizingValueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont]
         let valueSize = (value as NSString).size(withAttributes: sizingValueAttrs)
-        let reservedValueSize = max(valueSize.width, ("100%" as NSString).size(withAttributes: sizingValueAttrs).width)
-        let symbolWidth: CGFloat = style == .readable ? 20 : 18
-        let gap: CGFloat = style == .readable ? 5 : 4
-        let height: CGFloat = style == .readable ? 22 : 20
-        let imageSize = NSSize(width: ceil(symbolWidth + gap + reservedValueSize), height: height)
+        let reservedValueWidth = max(valueSize.width, ("100%" as NSString).size(withAttributes: sizingValueAttrs).width)
+        let width = ceil(reservedValueWidth + (style == .readable ? 2 : 1))
+        let height: CGFloat = style == .readable ? 23 : 21
+        let imageSize = NSSize(width: width, height: height)
         let image = NSImage(size: imageSize, flipped: false) { rect in
             NSColor.clear.setFill()
             rect.fill()
@@ -1147,18 +1146,21 @@ enum MenuBarRenderer {
                 // the symbol's full natural size squished wide glyphs like
                 // the battery icon. Scale both dimensions together to keep
                 // the glyph's own proportions.
-                let scale = min(symbolWidth / symbolSize.width, 1)
+                let maxSymbolWidth: CGFloat = style == .readable ? 15 : 14
+                let maxSymbolHeight: CGFloat = style == .readable ? 10 : 9
+                let scale = min(min(maxSymbolWidth / symbolSize.width,
+                                    maxSymbolHeight / symbolSize.height), 1)
                 let drawSize = NSSize(width: symbolSize.width * scale, height: symbolSize.height * scale)
-                let symbolRect = NSRect(x: 0,
-                                        y: (height - drawSize.height) / 2,
+                let symbolRect = NSRect(x: (width - drawSize.width) / 2,
+                                        y: style == .readable ? 13 : 12,
                                         width: drawSize.width,
                                         height: drawSize.height)
                 symbol.draw(in: symbolRect)
             }
             var valueAttrs = dynamicTextAttributes(font: valueFont)
             if let warningColor { valueAttrs[.foregroundColor] = warningColor }
-            let valueY = (height - valueSize.height) / 2
-            (value as NSString).draw(at: NSPoint(x: symbolWidth + gap, y: valueY),
+            let valueY: CGFloat = style == .readable ? -0.4 : -0.8
+            (value as NSString).draw(at: NSPoint(x: (width - valueSize.width) / 2, y: valueY),
                                      withAttributes: valueAttrs)
             return true
         }

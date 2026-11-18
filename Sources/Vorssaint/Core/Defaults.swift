@@ -436,6 +436,10 @@ enum DefaultsKey {
     static let menuBarUsageBarHighThreshold = "menuBarUsageBarHighThreshold" // percent
     static let menuBarHideIconWithMetrics = "menuBarHideIconWithMetrics" // glyph hides while metrics render in the main item
     static let menuBarIconSymbol = "menuBarIconSymbol" // system symbol name drawn instead of the glyph; empty keeps the glyph
+    static let menuBarHidingEnabled = "menuBarHidingEnabled" // add a collapsible divider for menu bar items
+    static let menuBarHidingAutoCollapse = "menuBarHidingAutoCollapse"
+    static let menuBarHidingDelaySeconds = "menuBarHidingDelaySeconds"
+    static let menuBarHidingShortcut = "menuBarHidingShortcut"
     static let menuBarMetricOrder = "menuBarMetricOrder" // comma-separated MenuBarMetric raw values
     static let menuBarCombineTemperatures = "menuBarCombineTemperatures" // usage/charge + temperature in one block when possible
     static let menuBarSeparateMetrics = "menuBarSeparateMetrics" // one status item per active metric
@@ -1236,6 +1240,7 @@ enum Defaults {
     static let allowedClipboardHistoryLimits = [20, 50, 100, 250, 500, 1_000, 10_000, 0]
     static let allowedClipboardHistoryRetentionDays = [1, 7, 30, 90, 365, 0]
     static let allowedClipboardAutoClearDelayRange = 5...3_600
+    static let allowedMenuBarHidingDelayRange = 5...60
     static let defaultClipboardAutoClearDelay = 20
     static let allowedClipboardMenuBarPreviewLengthRange = 5...50
     static let defaultClipboardMenuBarPreviewLength = 20
@@ -1717,6 +1722,10 @@ enum Defaults {
         DefaultsKey.menuBarUsageBarHighThreshold: 90,
         DefaultsKey.menuBarHideIconWithMetrics: false,
         DefaultsKey.menuBarIconSymbol: "",
+        DefaultsKey.menuBarHidingEnabled: false,
+        DefaultsKey.menuBarHidingAutoCollapse: true,
+        DefaultsKey.menuBarHidingDelaySeconds: 5,
+        DefaultsKey.menuBarHidingShortcut: GlobalShortcut.menuBarHidingDefault.storageValue,
         DefaultsKey.windowLayoutHiddenActions: "",
         DefaultsKey.windowLayoutWindowGap: 0,
         DefaultsKey.windowLayoutScreenGap: 0,
@@ -2613,6 +2622,11 @@ enum Defaults {
     static func sanitizedClipboardAutoClearDelay(_ seconds: Int) -> Int {
         min(max(seconds, allowedClipboardAutoClearDelayRange.lowerBound),
             allowedClipboardAutoClearDelayRange.upperBound)
+    }
+
+    static func sanitizedMenuBarHidingDelay(_ seconds: Int) -> TimeInterval {
+        TimeInterval(min(max(seconds, allowedMenuBarHidingDelayRange.lowerBound),
+                         allowedMenuBarHidingDelayRange.upperBound))
     }
 
     /// Same clamping reasoning as sanitizedClipboardAutoClearDelay above.

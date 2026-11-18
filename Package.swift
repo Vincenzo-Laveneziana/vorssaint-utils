@@ -25,9 +25,15 @@ let package = Package(
             path: "Sources/RecorderGIFCodec",
             sources: ["RecorderGIFCodec.c", "vendor/cgif/cgif_raw.c"]
         ),
+        .target(
+            name: "NativeMenuBarShim",
+            path: "Sources/NativeMenuBarShim",
+            exclude: ["THIRD_PARTY_LICENSE.md"],
+            publicHeadersPath: "include"
+        ),
         .executableTarget(
             name: "Vorssaint",
-            dependencies: ["VMStatisticsCompat", "HIDEventSystem", "CoreAudioTapCompat", "RecorderGIFCodec"],
+            dependencies: ["VMStatisticsCompat", "HIDEventSystem", "CoreAudioTapCompat", "RecorderGIFCodec", "NativeMenuBarShim"],
             path: "Sources/Vorssaint"
         )
     ]

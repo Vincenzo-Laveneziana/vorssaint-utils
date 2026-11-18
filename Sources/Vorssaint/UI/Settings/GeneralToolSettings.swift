@@ -9,6 +9,10 @@ import SwiftUI
 struct GeneralToolSettings: View {
     let anchor: SettingsSectionAnchor
     @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.menuBarHidingEnabled) private var menuBarHidingEnabled = false
+    @AppStorage(DefaultsKey.menuBarHidingAutoCollapse) private var menuBarHidingAutoCollapse = true
+    @AppStorage(DefaultsKey.menuBarHidingDelaySeconds) private var menuBarHidingDelaySeconds = 5
+    @AppStorage(DefaultsKey.menuBarHidingShortcut) private var menuBarHidingShortcut = GlobalShortcut.menuBarHidingDefault.storageValue
 
     private var text: GeneralSettingsStrings { FeatureStrings.generalSettings(l10n.language) }
 
@@ -23,6 +27,18 @@ struct GeneralToolSettings: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         PanelLayoutEditor()
+                        Divider()
+                        menuBarHidingRow
+                        if menuBarHidingEnabled {
+                            Divider()
+                            menuBarHidingAutoCollapseRow
+                            if menuBarHidingAutoCollapse {
+                                Divider()
+                                menuBarHidingDelayRow
+                            }
+                            Divider()
+                            menuBarHidingShortcutRow
+                        }
                         Divider()
                         MenuBarIconSymbolRow()
                         Divider()
@@ -57,6 +73,54 @@ struct GeneralToolSettings: View {
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
             .padding(22)
+        }
+    }
+
+    private var menuBarHidingRow: some View {
+        let strings = FeatureStrings.menuBarHiding(l10n.language)
+        return SettingsRow(symbol: "chevron.left.forwardslash.chevron.right",
+                           title: strings.title, caption: strings.caption) {
+            Toggle(strings.title, isOn: $menuBarHidingEnabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+    }
+
+    private var menuBarHidingAutoCollapseRow: some View {
+        let strings = FeatureStrings.menuBarHiding(l10n.language)
+        return SettingsRow(symbol: "timer", title: strings.autoCollapseTitle,
+                           caption: strings.autoCollapseCaption) {
+            Toggle(strings.autoCollapseTitle, isOn: $menuBarHidingAutoCollapse)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+    }
+
+    private var menuBarHidingDelayRow: some View {
+        let strings = FeatureStrings.menuBarHiding(l10n.language)
+        return SettingsRow(symbol: "clock", title: strings.autoCollapseTitle) {
+            Picker(strings.autoCollapseTitle,
+                   selection: $menuBarHidingDelaySeconds) {
+                ForEach([5, 10, 15, 30, 60], id: \.self) { seconds in
+                    Text("\(seconds) s").tag(seconds)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 82)
+        }
+    }
+
+    private var menuBarHidingShortcutRow: some View {
+        SettingsRow(symbol: "keyboard", title: l10n.s.globalHotkeySection,
+                    caption: l10n.s.shortcutPressKeys) {
+            ShortcutRecorderButton(
+                shortcut: GlobalShortcut(storageValue: menuBarHidingShortcut) ?? .menuBarHidingDefault,
+                isEnabled: menuBarHidingEnabled,
+                waitingTitle: l10n.s.shortcutPressKeys,
+                invalidAction: {},
+                captureAction: { menuBarHidingShortcut = $0.storageValue }
+            )
+            .frame(width: 110)
         }
     }
 }
