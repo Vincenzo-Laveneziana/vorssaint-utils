@@ -77,6 +77,21 @@ struct CommandBarSettings: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Text(text.widthSettingTitle)
+                        .frame(minWidth: 140, alignment: .leading)
+                    Slider(value: Binding(
+                        get: { Double(service.panelWidth) },
+                        set: { service.setPanelWidth($0) }),
+                           in: Double(CommandBarView.minimumWidth)...Double(CommandBarView.maximumWidth),
+                           step: 20)
+                    Text("\(Int(service.panelWidth)) pt")
+                        .monospacedDigit()
+                        .frame(width: 66, alignment: .trailing)
+                }
+                Text(text.widthSettingCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 // No callback: the bar reads this on every open, and opening
                 // Settings has already hidden it, so the two can never be on
                 // screen with a stale value between them.

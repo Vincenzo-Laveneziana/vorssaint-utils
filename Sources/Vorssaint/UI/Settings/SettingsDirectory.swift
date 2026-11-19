@@ -78,7 +78,7 @@ struct SettingsDirectoryItem: Identifiable {
 enum SettingsDirectory {
     /// Shared pages whose tools cover the page without a separate overview row.
     private static let toolOnlyPages: Set<SettingsPage> = [
-        .energy, .mouse, .switcher, .dock, .clipboard, .cutPaste, .quickTools, .screenshot,
+        .energy, .mouse, .switcher, .dock, .clipboard, .cutPaste, .quickActions, .quickTools, .screenshot,
     ]
 
     /// Keep the directory's destinations, but show the most useful groups
@@ -513,6 +513,11 @@ enum SettingsDirectory {
                                         (.finderRename,
                                          [FeatureStrings.finderRename(language).enableLabel]),
                                        ]),
+                SettingsDirectoryItem(page: .quickActions,
+                                      title: language == .it ? "Azioni AI" : "AI Actions",
+                                      icon: "sparkles",
+                                      keywords: ["Quick Actions", "Fix Grammar", "Rewrite", "Summarize",
+                                                 "provider", "model", "prompt", "shortcut", "alias"]),
                 SettingsDirectoryItem(page: .shelf, title: s.shelfName, icon: "tray.full",
                                       keywords: [s.shelfEnable, s.shelfDropZoneToggle, s.shelfEdgeToggle,
                                                  s.shelfClearOnClose, s.shelfShortcutFinderSelection,

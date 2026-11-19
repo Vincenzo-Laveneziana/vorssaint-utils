@@ -650,6 +650,7 @@ enum DefaultsKey {
     static let commandBarShortcut = "commandBarShortcut"
     /// Compact mode: an empty field shows nothing but itself. Off by default
     static let commandBarCompactMode = "commandBarCompactMode"
+    static let commandBarWidth = "commandBarWidth"
     /// The ASCII layout borrowed while the bar is open, restored on close. Off by default
     static let commandBarASCIILayoutEnabled = "commandBarASCIILayoutEnabled"
     static let commandBarUsage = "commandBarUsage"           // per-command run counts, never queries
@@ -663,6 +664,11 @@ enum DefaultsKey {
     static let commandBarRowShortcuts = "commandBarRowShortcuts" // {row key: shortcut}
     static let commandBarPositionOffset = "commandBarPositionOffset" // "dx,dy" from the default spot
     static let commandBarEmojiSkinTone = "commandBarEmojiSkinTone" // "" is the yellow default
+    static let agentChatProvider = "agentChatProvider" // preferred local AI CLI
+    static let agentChatCodexModel = "agentChatCodexModel"
+    static let agentChatClaudeModel = "agentChatClaudeModel"
+    static let quickActionsEnabled = "quickActionsEnabled"
+    static let quickActions = "quickActions" // Data: [QuickAction] JSON
     // The folders a file search looks in, one per line, written with a tilde
     // so an exported list still points somewhere on another Mac. Empty means
     // the bar looks for no files at all, which is the setting out of the box.
@@ -1897,6 +1903,7 @@ enum Defaults {
         DefaultsKey.scratchpadShortcut: GlobalShortcut.scratchpadDefault.storageValue,
         DefaultsKey.commandBarShortcutEnabled: false,
         DefaultsKey.commandBarCompactMode: false,
+        DefaultsKey.commandBarWidth: 560.0,
         DefaultsKey.commandBarASCIILayoutEnabled: false,
         DefaultsKey.commandBarDisabledSources: "",
         DefaultsKey.commandBarAliases: "",
@@ -1907,6 +1914,11 @@ enum Defaults {
         DefaultsKey.commandBarShortcut: GlobalShortcut.commandBarDefault.storageValue,
         DefaultsKey.commandBarPositionOffset: "",
         DefaultsKey.commandBarEmojiSkinTone: "",
+        DefaultsKey.agentChatProvider: "codex",
+        DefaultsKey.agentChatCodexModel: "",
+        DefaultsKey.agentChatClaudeModel: "",
+        DefaultsKey.quickActionsEnabled: false,
+        DefaultsKey.quickActions: Data(),
         DefaultsKey.panelUtilityCommandBar: true,
         DefaultsKey.scratchpadRetention: ScratchpadRetention.never.rawValue,
         DefaultsKey.scratchpadCloseOnClickOutside: true,

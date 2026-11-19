@@ -215,6 +215,7 @@ final class FeatureRuntime: ObservableObject {
         for feature in AppFeature.allCases where feature.isAvailable {
             Self.bindings[feature]?()
         }
+        QuickActionsService.shared.syncWithPreferences()
     }
 
     /// Re-syncs a set of features (used by the permission sinks); skips

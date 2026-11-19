@@ -75,6 +75,26 @@ enum QuickToolHUD {
         present(AnyView(content), dismissAfter: 1.5)
     }
 
+    /// Stays on screen while a tool performs a request with no fixed duration.
+    /// The panel is non-activating, so the app underneath keeps its focus.
+    static func showProgress(message: String) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { showProgress(message: message) }
+            return
+        }
+        let content = HStack(spacing: 9) {
+            ProgressView().controlSize(.small)
+            Text(message)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(2)
+                .frame(maxWidth: messageWidthLimit, alignment: .leading)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        present(AnyView(content), dismissAfter: nil)
+    }
+
     static func showCountdown(_ value: Int) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { showCountdown(value) }
@@ -158,7 +178,7 @@ enum QuickToolHUD {
     }
 
     private static func present(_ content: AnyView,
-                                dismissAfter: Double,
+                                dismissAfter: Double?,
                                 windowShadow: Bool = true) {
         let host = NSHostingController(rootView: content)
         host.view.layoutSubtreeIfNeeded()
@@ -183,9 +203,12 @@ enum QuickToolHUD {
         }
 
         dismissWork?.cancel()
-        let work = DispatchWorkItem { dismiss() }
-        dismissWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + dismissAfter, execute: work)
+        dismissWork = nil
+        if let dismissAfter {
+            let work = DispatchWorkItem { dismiss() }
+            self.dismissWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + dismissAfter, execute: work)
+        }
     }
 
     private static func dismiss() {

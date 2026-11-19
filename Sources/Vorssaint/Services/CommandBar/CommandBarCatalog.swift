@@ -327,6 +327,30 @@ enum CommandBarCatalog {
         let hub = FeatureStrings.hub(language)
         var entries: [CommandBarEntry] = []
 
+        let chatTitle = language == .it ? "Chat IA" : "AI Chat"
+        entries.append(CommandBarEntry(
+            id: "action.agentChat",
+            title: chatTitle,
+            subtitle: language == .it ? "Codex e Claude Code" : "Codex and Claude Code",
+            keywords: "ai chat assistant codex claude conversation",
+            icon: .symbol("sparkles"),
+            keepsBarOpen: true,
+            run: { _ in Task { @MainActor in CommandBarService.shared.enterAIChat(prompt: "") } }))
+        let askAITitle = language == .it ? "Chiedi all’IA" : "Ask AI"
+        entries.append(CommandBarEntry(
+            id: "action.askAI",
+            title: askAITitle,
+            subtitle: language == .it ? "Invia una domanda a Codex o Claude Code" : "Ask Codex or Claude Code",
+            keywords: "ai assistant codex claude prompt question",
+            icon: .symbol("sparkles"),
+            keepsBarOpen: true,
+            takesArgument: true,
+            run: { _ in
+                let typed = CommandBarService.shared.queryWhenRun
+                let prompt = CommandBarLinks.trailingArgument(query: typed, name: askAITitle) ?? ""
+                Task { @MainActor in CommandBarService.shared.enterAIChat(prompt: prompt) }
+            }))
+
         /// Where the action lives. When the feature's name IS the row title
         /// ("Screenshot" under "Screenshot" reads silly), the group name
         /// stands in.

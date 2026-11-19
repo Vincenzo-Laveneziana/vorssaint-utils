@@ -34,6 +34,7 @@ final class CommandBarService: ObservableObject {
         /// Waiting for the person to press the combination they want for one
         /// row. Every other key is theirs while this lasts.
         case capturingShortcut(entryID: String)
+        case agentChat
 
         var isUninstallFlow: Bool {
             switch self {
@@ -128,6 +129,9 @@ final class CommandBarService: ObservableObject {
     /// no category open. The panel drops its divider and footer while this
     /// is set.
     @Published private(set) var isCompactHome = false
+
+    /// User-selected width shared by every Command Bar mode.
+    @Published private(set) var panelWidth: CGFloat = CommandBarView.width
 
     /// Where the open bar shows: its own window, a window the Dynamic Island
     /// drops below itself, or inside the open island.
@@ -716,7 +720,10 @@ final class CommandBarService: ObservableObject {
             let size = panel.contentViewController?.view.fittingSize ?? panel.frame.size
             let screen = self.panelScreen ?? NSScreen.pointerVisibleFrame
             var frame = panel.frame
-            frame.origin.x = frame.midX - size.width / 2
+            let centeredX = frame.midX - size.width / 2
+            let minX = screen.minX + 16
+            let maxX = max(minX, screen.maxX - 16 - size.width)
+            frame.origin.x = min(max(centeredX, minX), maxX)
             frame.origin.y = frame.maxY - size.height
             frame.size = size
             // Growing downward must stop at the screen edge; the list scrolls
@@ -1162,8 +1169,21 @@ final class CommandBarService: ObservableObject {
             UserDefaults.standard.string(forKey: DefaultsKey.commandBarUsage))
         shortcutCache = rowShortcuts
         compactMode = UserDefaults.standard.bool(forKey: DefaultsKey.commandBarCompactMode)
+        let savedWidth = UserDefaults.standard.double(forKey: DefaultsKey.commandBarWidth)
+        panelWidth = savedWidth > 0
+            ? CGFloat(min(max(savedWidth, Double(CommandBarView.minimumWidth)), Double(CommandBarView.maximumWidth)))
+            : CommandBarView.width
         hasCustomPosition = positionOffset != .zero
         reloadFileSearchCaches()
+    }
+
+    func setPanelWidth(_ requestedWidth: Double) {
+        let width = CGFloat(min(max(requestedWidth, Double(CommandBarView.minimumWidth)),
+                                Double(CommandBarView.maximumWidth)))
+        guard width != panelWidth else { return }
+        panelWidth = width
+        UserDefaults.standard.set(Double(width), forKey: DefaultsKey.commandBarWidth)
+        refreshPanelLayout()
     }
 
     private func reloadFileSearchCaches() {
@@ -1562,7 +1582,7 @@ final class CommandBarService: ObservableObject {
                                                       query: query,
                                                       hasCategory: activeCategory != nil,
                                                       isPeeking: isPeekingHome))
-        case .argument, .confirm, .uninstallReview, .uninstallHomebrewConfirm, .actions, .naming,
+        case .agentChat, .argument, .confirm, .uninstallReview, .uninstallHomebrewConfirm, .actions, .naming,
              .capturingShortcut:
             setCompactHome(false)
         }
@@ -2036,6 +2056,21 @@ final class CommandBarService: ObservableObject {
             current: query, title: entry.title, matchTitle: entry.matchTitle)
         completedQuery = completion
         query = completion
+    }
+
+    @MainActor
+    func enterAIChat(prompt: String? = nil) {
+        switch mode {
+        case .search:
+            savedQuery = query
+        case .argument:
+            break // savedQuery still holds the search that opened the argument.
+        default:
+            return
+        }
+        AgentChatService.shared.prepareForCommandBar(prompt: prompt ?? query)
+        mode = .agentChat
+        refreshPanelLayout()
     }
 
     func select(_ index: Int) {
@@ -2645,6 +2680,8 @@ final class CommandBarService: ObservableObject {
 
     func runSelected() {
         switch mode {
+        case .agentChat:
+            return
         case .actions:
             runSelectedAction()
             return
@@ -2749,6 +2786,10 @@ final class CommandBarService: ObservableObject {
     /// plain search it closes the bar.
     func stepBack() {
         switch mode {
+        case .agentChat:
+            mode = .search
+            query = savedQuery
+            refreshResults()
         case .actions:
             leaveActions()
         case .naming(let entryID):
@@ -3108,9 +3149,11 @@ final class CommandBarService: ObservableObject {
     /// main thread (it asks Accessibility) and only while the bar is open, so
     /// nothing is ever read from anyone's screen in the background.
     private func loadSelection(for id: UUID) {
-        guard isEnabled(.selection), Permissions.shared.accessibility else { return }
+        guard (isEnabled(.selection) || QuickActionsService.shared.isEnabled),
+              Permissions.shared.accessibility else { return }
         guard !selectionLoading else { return }
         selectionLoading = true
+        let targetPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let (text, exact, typesOver) = CommandBarSelectionReader.readSelection()
             DispatchQueue.main.async {
@@ -3127,13 +3170,16 @@ final class CommandBarService: ObservableObject {
                 }
                 let bar = FeatureStrings.commandBar(L10n.shared.language)
                 self.selectedText = text
-                self.selectionEntries = CommandBarCatalog.selectionEntries(text, exactly: exact,
-                                                                           typesOver: typesOver, bar: bar) {
-                    [weak self] selected in
-                    // The bar stays open: the point is to convert, add up or
-                    // look up what was selected without retyping it.
-                    self?.query = selected
-                }
+                let ordinaryEntries: [CommandBarEntry] = self.isEnabled(.selection)
+                    ? CommandBarCatalog.selectionEntries(text, exactly: exact,
+                                                         typesOver: typesOver, bar: bar) { [weak self] selected in
+                        // The bar stays open: the point is to convert, add up or
+                        // look up what was selected without retyping it.
+                        self?.query = selected
+                    }
+                    : []
+                self.selectionEntries = ordinaryEntries + QuickActionsService.shared.commandEntries(
+                    selection: text, exactly: exact, typesOver: typesOver, targetPID: targetPID)
                 self.selectionPreview = text.isEmpty ? "" : CommandBarText.preview(text)
                 self.indexEntries()
                 self.refreshResults()
@@ -3557,6 +3603,13 @@ final class CommandBarService: ObservableObject {
                                                searchFieldFocused: panel.firstResponder is NSTextView)
                     ? nil : event
             }
+            if case .agentChat = self.mode {
+                if Int(event.keyCode) == kVK_Escape {
+                    self.stepBack()
+                    return nil
+                }
+                return event
+            }
             switch Int(event.keyCode) {
             case kVK_Escape:
                 self.stepBack()
@@ -3580,7 +3633,12 @@ final class CommandBarService: ObservableObject {
             case kVK_RightArrow:
                 return self.moveCategory(1) ? nil : event
             case kVK_Tab:
-                self.completeSelection()
+                if case .search = self.mode {
+                    let prompt = self.query
+                    Task { @MainActor in self.enterAIChat(prompt: prompt) }
+                } else {
+                    self.completeSelection()
+                }
                 return nil
             default:
                 // ⌘1…⌘9 run by position; plain digits belong to the field.

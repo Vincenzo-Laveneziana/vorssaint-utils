@@ -30,6 +30,8 @@ struct CommandBarView: View {
     /// past what a laptop screen can show above the fold.
     static let listCeiling: CGFloat = 452
     static let width: CGFloat = 560
+    static let minimumWidth: CGFloat = 560
+    static let maximumWidth: CGFloat = 1000
     /// The field alone, as the compact bar shows it.
     static let fieldHeight: CGFloat = 50
     private static let homeChipID = "category.all"
@@ -119,6 +121,11 @@ struct CommandBarView: View {
 
     private var shownAs: CommandBarPresentation { presentation ?? service.presentation }
 
+    private var panelContentWidth: CGFloat {
+        let available = NSScreen.pointerVisibleFrame.width - 32
+        return min(service.panelWidth, max(480, available))
+    }
+
     /// Out of the island the bar is the island's: black, or the open island's
     /// own surface, and dark like it.
     @ViewBuilder private var backdrop: some View {
@@ -131,64 +138,70 @@ struct CommandBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            searchBar
-            if let warning = service.uninstallWarning {
-                Label(warning, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 17)
-                    .padding(.bottom, 12)
-            }
-            switch service.mode {
-            case .search:
-                if showsCategoryChips {
-                    Divider()
-                    categoryChipsRow
+            if case .agentChat = service.mode {
+                AgentChatView(embedded: true)
+            } else {
+                searchBar
+                if let warning = service.uninstallWarning {
+                    Label(warning, systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 17)
+                        .padding(.bottom, 12)
                 }
-                if service.rows.isEmpty {
-                    // A category with nothing in it needs the same way out a
-                    // fruitless search gets, or the panel is a room with no
-                    // door in it.
-                    if !trimmedQuery.isEmpty || service.activeCategory != nil {
+                switch service.mode {
+                case .search:
+                    if showsCategoryChips {
                         Divider()
-                        emptyState
+                        categoryChipsRow
                     }
-                } else {
-                    if !showsCategoryChips { Divider() }
-                    resultsList
+                    if service.rows.isEmpty {
+                        // A category with nothing in it needs the same way out a
+                        // fruitless search gets, or the panel is a room with no
+                        // door in it.
+                        if !trimmedQuery.isEmpty || service.activeCategory != nil {
+                            Divider()
+                            emptyState
+                        }
+                    } else {
+                        if !showsCategoryChips { Divider() }
+                        resultsList
+                    }
+                case .argument(let entryID):
+                    Divider()
+                    argumentCard(entryID: entryID)
+                case .confirm(let entryID):
+                    Divider()
+                    confirmCard(entryID: entryID)
+                case .uninstallReview:
+                    Divider()
+                    uninstallReviewCard
+                    UninstallerHomebrewLastLog(compact: true)
+                case .uninstallHomebrewConfirm:
+                    Divider()
+                    uninstallHomebrewConfirmCard
+                case .actions:
+                    Divider()
+                    actionsList
+                case .naming(let entryID):
+                    Divider()
+                    namingCard(entryID: entryID)
+                case .capturingShortcut(let entryID):
+                    Divider()
+                    shortcutCard(entryID: entryID)
+                case .agentChat:
+                    EmptyView()
                 }
-            case .argument(let entryID):
-                Divider()
-                argumentCard(entryID: entryID)
-            case .confirm(let entryID):
-                Divider()
-                confirmCard(entryID: entryID)
-            case .uninstallReview:
-                Divider()
-                uninstallReviewCard
-                UninstallerHomebrewLastLog(compact: true)
-            case .uninstallHomebrewConfirm:
-                Divider()
-                uninstallHomebrewConfirmCard
-            case .actions:
-                Divider()
-                actionsList
-            case .naming(let entryID):
-                Divider()
-                namingCard(entryID: entryID)
-            case .capturingShortcut(let entryID):
-                Divider()
-                shortcutCard(entryID: entryID)
-            }
-            // A footer under a bare field reads as a second row of chrome on
-            // something meant to be one strip.
-            if !service.isCompactHome {
-                Divider()
-                footer
+                // A footer under a bare field reads as a second row of chrome on
+                // something meant to be one strip.
+                if !service.isCompactHome {
+                    Divider()
+                    footer
+                }
             }
         }
-        .frame(width: Self.width)
+        .frame(width: panelContentWidth)
         .environment(\.colorScheme, shownAs == .window ? colorScheme : .dark)
         .background(backdrop)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -212,6 +225,7 @@ struct CommandBarView: View {
     }
 
     private func focusSearch() {
+        if case .agentChat = service.mode { return }
         DispatchQueue.main.async { if isShown { searchFocused = true } }
     }
 
@@ -266,6 +280,7 @@ struct CommandBarView: View {
                 .disableAutocorrection(true)
                 .accessibilityLabel(text.pageTitle)
             if service.isCompactHome { compactHints }
+            if case .search = service.mode { quickAIButton }
             if !service.query.isEmpty {
                 Button {
                     service.query = ""
@@ -279,6 +294,30 @@ struct CommandBarView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+    }
+
+    /// Opens the built-in AI chat, carrying the current search as its prompt.
+    private var quickAIButton: some View {
+        Button {
+            service.enterAIChat()
+        } label: {
+            HStack(spacing: 7) {
+                Text("Quick AI")
+                    .font(.system(size: 13, weight: .semibold))
+                Image(systemName: "arrow.right.to.line")
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 26, height: 24)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.28), lineWidth: 1)
+                    }
+            }
+            .foregroundStyle(Color.primary.opacity(0.78))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Quick AI")
+        .accessibilityLabel("Quick AI")
     }
 
     /// The collapsed bar has no footer, so the keys that still work (↓ to

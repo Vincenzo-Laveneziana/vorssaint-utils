@@ -89,11 +89,19 @@ enum BoundedProcessRunner {
                     timeout: TimeInterval,
                     maxOutputBytes: Int,
                     environment: [String: String]? = nil,
-                    cancellation: BoundedProcessCancellation? = nil) -> Result {
+                    cancellation: BoundedProcessCancellation? = nil,
+                    currentDirectoryURL: URL? = nil,
+                    standardInputData: Data? = nil) -> Result {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
         process.environment = environment
+        process.currentDirectoryURL = currentDirectoryURL
+        let inputPipe = standardInputData.map { _ in Pipe() }
+        if let inputPipe {
+            process.standardInput = inputPipe
+            _ = fcntl(inputPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
+        }
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
@@ -112,6 +120,10 @@ enum BoundedProcessRunner {
             process.terminationHandler = { _ in finished.signal() }
             if let cancellation { try cancellation.launch(process) }
             else { try process.run() }
+            if let inputPipe, let standardInputData {
+                try? inputPipe.fileHandleForWriting.write(contentsOf: standardInputData)
+                try? inputPipe.fileHandleForWriting.close()
+            }
             return BoundedChild(pid: process.processIdentifier,
                                 terminate: { process.terminate() },
                                 status: { process.terminationStatus })

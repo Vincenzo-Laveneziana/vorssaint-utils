@@ -428,9 +428,10 @@ enum AgentLimitSupport {
     }
 
     /// The window that will stop work first: the most spent, and on a tie the
-    /// one renewing last.
+    /// one renewing last. Model-specific windows are informational; they do
+    /// not represent the account-wide allowance shown in the compact meter.
     static func binding(_ limits: AgentLimits?, now: Date) -> AgentLimitWindow? {
-        limits?.windows.map { current($0, at: now) }.max {
+        limits?.windows.filter { $0.scope == nil }.map { current($0, at: now) }.max {
             $0.usedPercent != $1.usedPercent ? $0.usedPercent < $1.usedPercent
                 : ($0.resetsAt ?? .distantPast) < ($1.resetsAt ?? .distantPast)
         }

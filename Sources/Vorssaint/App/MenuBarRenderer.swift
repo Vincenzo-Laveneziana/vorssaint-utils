@@ -485,12 +485,13 @@ enum MenuBarRenderer {
                 let window = NotchAgentSupport.focusedLimit(limits,
                                                             focus: NotchAgentSupport.limitFocus(),
                                                             now: usage.now)
+                let label = "IA"
                 if usesBars, usage.loaded, let window {
-                    groups.append([.usageBarBlock(label: "AI", fraction: window.usedFraction,
+                    groups.append([.usageBarBlock(label: label, fraction: window.usedFraction,
                                                   style: style, pressure: nil)])
                 } else {
                     let value = usage.loaded ? window.map { "\(Int($0.usedPercent.rounded()))%" } ?? "—" : "—"
-                    groups.append([.metricBlock(label: "AI", value: value,
+                    groups.append([.metricBlock(label: label, value: value,
                                                 minimumValue: "100%", style: style, pressure: nil)])
                 }
             case .network:
